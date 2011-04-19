@@ -233,7 +233,7 @@ Uses ``widget_template`` passed to the field to render the rating field widget::
 
         {% rating_widget on instance.field %}
 
-The context is passed to the template and additionaly, the template receives::
+The context is passed to the template and additionaly, the template receives:
 
 * ``content_type`` - The content type of the instance object.
 * ``instance`` - The object instance.
@@ -246,7 +246,7 @@ The context is passed to the template and additionaly, the template receives::
 * ``votes`` - Number of votes.
 * ``ratings`` - a list of ``checked``, ``value`` and ``title``. For example::
 
-    [
-        { 'checked': False, 'value': 'clear', 'title: 'Clear' },
-        { 'checked': True, 'value': 'favorite', 'title: 'Favorite' },
-    ]
+        [
+            { 'checked': False, 'value': 'clear', 'title: 'Clear' },
+            { 'checked': True, 'value': 'favorite', 'title: 'Favorite' },
+        ]
