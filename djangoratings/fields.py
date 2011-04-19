@@ -113,7 +113,10 @@ class RatingManager(object):
             
         try:
             rating = Vote.objects.get(**kwargs)
-            return rating.score
+            try:
+                return self.field.values[rating.score + self.field.range_lower]
+            except IndexError:
+                pass
         except Vote.MultipleObjectsReturned:
             pass
         except Vote.DoesNotExist:
@@ -261,6 +264,8 @@ class RatingManager(object):
         return getattr(self.instance, self.score_field_name, default)
     
     def _set_score(self, value):
+        if value in self.field.types:
+            value = self.field.types[value]
         return setattr(self.instance, self.score_field_name, value)
         
     score = property(_get_score, _set_score)
