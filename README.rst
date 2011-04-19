@@ -241,7 +241,7 @@ The context is passed to the template and additionaly, the template receives:
 * ``app_label`` - The app label for the object.
 * ``object_id`` - The object instance ID.
 * ``field_name`` - The field name.
-* ``had_voted' - If the user has voted previously, the voted score.
+* ``had_voted`` - If the user has voted previously, the voted score.
 * ``score`` - The overall voting score for the object.
 * ``votes`` - Number of votes.
 * ``ratings`` - a list of ``checked``, ``value`` and ``title``. For example::
