@@ -1,4 +1,5 @@
 from django.db.models import IntegerField, PositiveIntegerField
+from django.utils.translation import ugettext_lazy as _
 from django.conf import settings
 
 import forms
@@ -44,7 +45,7 @@ class RatingManager(object):
         Returns the weighted percentage of the score from min-max values"""
         if not (self.votes and self.score):
             return 0
-        return 100 * (self.get_rating() / self.field.range)
+        return 100 * (self.get_rating() / (self.field.range_upper-self.field.range_lower+1))
     
     def get_real_percent(self):
         """get_real_percent()
@@ -52,7 +53,7 @@ class RatingManager(object):
         Returns the unmodified percentage of the score based on a 0-point scale."""
         if not (self.votes and self.score):
             return 0
-        return 100 * (self.get_real_rating() / self.field.range)
+        return 100 * (self.get_real_rating() / (self.field.range_upper-self.field.range_lower+1))
     
     def get_ratings(self):
         """get_ratings()
@@ -123,6 +124,9 @@ class RatingManager(object):
         """add(score, user, ip_address)
         
         Used to add a rating to an object."""
+        if score in self.field.types:
+            score = self.field.types[score]
+        
         try:
             score = int(score)
         except (ValueError, TypeError):
@@ -133,7 +137,7 @@ class RatingManager(object):
             raise CannotDeleteVote("you are not allowed to delete votes for %s" % (self.field.name,))
             # ... you're also can't delete your vote if you haven't permissions to change it. I leave this case for CannotChangeVote
         
-        if score < 0 or score > self.field.range:
+        if score and (score < self.field.range_lower or score > self.field.range_upper):
             raise InvalidRating("%s is not a valid choice for %s" % (score, self.field.name))
 
         is_anonymous = (user is None or not user.is_authenticated())
@@ -321,11 +325,19 @@ class RatingField(IntegerField):
         if 'choices' in kwargs:
             raise TypeError("%s invalid attribute 'choices'" % (self.__class__.__name__,))
         self.can_change_vote = kwargs.pop('can_change_vote', False)
-        self.weight = kwargs.pop('weight', 0)
-        self.range = kwargs.pop('range', 2)
         self.allow_anonymous = kwargs.pop('allow_anonymous', False)
         self.use_cookies = kwargs.pop('use_cookies', False)
         self.allow_delete = kwargs.pop('allow_delete', False)
+        self.widget_template = kwargs.pop('widget_template', 'djangoratings/_rating.html')
+        self.weight = kwargs.pop('weight', 0)
+        self.range_lower = kwargs.pop('lower', 1)
+        self.range_upper = kwargs.pop('upper', None)
+        if self.range_upper is None:
+            self.range_upper = kwargs.pop('range', 2)
+        self.titles = kwargs.pop('titles', [])
+        self.values = kwargs.pop('values', range(self.range_lower, self.range_upper+1))
+        self.types = dict(zip(self.values, range(self.range_lower, self.range_upper+1)))
+        self.types[''] = 0
         kwargs['editable'] = False
         kwargs['default'] = 0
         kwargs['blank'] = True
@@ -384,3 +396,48 @@ class AnonymousRatingField(RatingField):
     def __init__(self, *args, **kwargs):
         kwargs['allow_anonymous'] = True
         super(AnonymousRatingField, self).__init__(*args, **kwargs)
+
+
+class VotingField(RatingField):
+    def __init__(self, *args, **kwargs):
+        kwargs['widget_template'] = kwargs.get('widget_template', 'djangoratings/_voting.html')
+        kwargs['lower'] = -1
+        kwargs['upper'] = 1
+        kwargs['titles'] = (_("Down"), _("Clear"), _("Up"))
+        kwargs['values'] = ('down', 'clear', 'up')
+        super(VotingField, self).__init__(*args, **kwargs)
+
+class AnonymousVotingField(VotingField):
+    def __init__(self, *args, **kwargs):
+        kwargs['allow_anonymous'] = True
+        super(AnonymousVotingField, self).__init__(*args, **kwargs)
+
+
+class FavoriteField(RatingField):
+    def __init__(self, *args, **kwargs):
+        kwargs['widget_template'] = kwargs.get('widget_template', 'djangoratings/_favorite.html')
+        kwargs['lower'] = 0
+        kwargs['upper'] = 1
+        kwargs['titles'] = (_("Clear"), _("Favorite"))
+        kwargs['values'] = ('clear', 'favorite')
+        super(FavoriteField, self).__init__(*args, **kwargs)
+
+class AnonymousFavoriteField(FavoriteField):
+    def __init__(self, *args, **kwargs):
+        kwargs['allow_anonymous'] = True
+        super(AnonymousFavoriteField, self).__init__(*args, **kwargs)
+
+
+class FlagField(RatingField):
+    def __init__(self, *args, **kwargs):
+        kwargs['widget_template'] = kwargs.get('widget_template', 'djangoratings/_flag.html')
+        kwargs['lower'] = 0
+        kwargs['upper'] = 1
+        kwargs['titles'] = (_("Clear"), _("Flag"))
+        kwargs['values'] = ('clear', 'flag')
+        super(FlagField, self).__init__(*args, **kwargs)
+
+class AnonymousFlagField(FlagField):
+    def __init__(self, *args, **kwargs):
+        kwargs['allow_anonymous'] = True
+        super(AnonymousFlagField, self).__init__(*args, **kwargs)

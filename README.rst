@@ -46,11 +46,47 @@ to obtain a higher rating, you can use the ``weight`` kwarg::
 
 ``RatingField`` allows the following options:
 
-* ``range = 2`` - The range in which values are accepted. For example, a range of 2, says there are 2 possible vote scores.
+* ``lower = 0`` - The lower value in the range for which values are accepted. For example, a lower value of -1, says the voting scores start at -1.
+* ``upper = 2`` - The upper value in the range for which values are accepted. For example, an upper value of 1, says the highest possible voting score is 1.
+* ``range = 2`` - Upper and range are synonymous. For example, a range of 2, says there are 2 possible vote scores (provided lower is not set, or is 0).
 * ``can_change_vote = False`` - Allow the modification of votes that have already been made.
 * ``allow_delete = False`` - Allow the deletion of existent votes. Works only if ``can_change_vote = True``
 * ``allow_anonymous = False`` - Whether to allow anonymous votes.
-* ``use_cookies = False`` - Use COOKIES to authenticate user votes. Works only if ``allow_anonymous = True``. 
+* ``use_cookies = False`` - Use COOKIES to authenticate user votes. Works only if ``allow_anonymous = True``.
+* ``values = [lower ... upper]`` - List of strings accepted as alternative to score integer values. For example, ``['clear', 'favorite']`` would make it so the voting system accepts eigher 'clear' or 'favorite' in addition to 0 and 1, respectively.
+* ``titles = []`` - List of strings used to have verbose names the voting scores. For example, ``[_("Clear"), _("Favorite")]``.
+* ``widget_template = 'djangoratings/_rating.html'`` - Accepts the template name used to display the widget.
+
+Also available there are ``VotingField``, ``FavoriteField`` and ``FlagField``, with their anonymous alternatives::
+
+	from djangoratings.fields import VotingField
+
+	class MyModel(models.Model):
+	    rating = VotingField() # accepting 'down', 'clear' and 'up'
+
+``VotingField``'s default options are:
+
+* ``lower = -1``
+* ``upper = 1``
+* ``values = ['down', 'clear', 'up']``
+* ``titles = [_("Down"), _("Clear"), _("Up")]``
+* ``widget_template = 'djangoratings/_voting.html'``
+
+``FavoriteField``'s default options are:
+
+* ``lower = 0``
+* ``upper = 1``
+* ``values = ['clear', 'favorite']``
+* ``titles = [_("Clear"), _("Favorite")]``
+* ``widget_template = 'djangoratings/_favorite.html'``
+
+``FlagField``'s default options are:
+
+* ``lower = 0``
+* ``upper = 1``
+* ``values = ['clear', 'flag']``
+* ``titles = [_("Clear"), _("Flag")]``
+* ``widget_template = 'djangoratings/_flag.html'``
 
 ===================
 Using the model API
@@ -188,3 +224,29 @@ stores it in a context variable. If the user has not voted, the
 context variable will be 0::
 
 	{% rating_by_user user on instance.field as vote %}
+
+-------------
+rating_widget
+-------------
+
+Uses ``widget_template`` passed to the field to render the rating field widget::
+
+        {% rating_widget on instance.field %}
+
+The context is passed to the template and additionaly, the template receives::
+
+* ``content_type`` - The content type of the instance object.
+* ``instance`` - The object instance.
+* ``model`` - The model name for the object.
+* ``app_label`` - The app label for the object.
+* ``object_id`` - The object instance ID.
+* ``field_name`` - The field name.
+* ``had_voted' - If the user has voted previously, the voted score.
+* ``score`` - The overall voting score for the object.
+* ``votes`` - Number of votes.
+* ``ratings`` - a list of ``checked``, ``value`` and ``title``. For example::
+
+    [
+        { 'checked': False, 'value': 'clear', 'title: 'Clear' },
+        { 'checked': True, 'value': 'favorite', 'title: 'Favorite' },
+    ]

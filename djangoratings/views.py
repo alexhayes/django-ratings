@@ -1,10 +1,45 @@
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
+from django.utils.translation import ugettext_lazy as _
 from django.http import HttpResponse, Http404
 
 from exceptions import *
 from django.conf import settings
 from default_settings import RATINGS_VOTES_PER_IP
+
+def _rating_widget(instance, field, had_voted):
+    ratings = []
+    for num in range(field.field.range_lower, field.field.range_upper+1):
+        if num == field.score:
+            checked = True
+        else:
+            checked = False
+        try:
+            value = field.field.values[num-field.field.range_lower]
+        except IndexError:
+            value = num
+        try:
+            title = field.field.titles[num-field.field.range_lower]
+        except IndexError:
+            title = ''
+        ratings.append({
+            'checked': checked,
+            'value': value,
+            'title': title,
+        })
+    content_type = ContentType.objects.get_for_model(instance)
+    return {
+        'content_type': content_type,
+        'instance': instance,
+        'model': content_type.model,
+        'app_label': content_type.app_label,
+        'object_id': instance.id,
+        'field_name': field.field.name,
+        'had_voted' : had_voted,
+        'score': field.score,
+        'votes': field.votes,
+        'ratings': ratings,
+    }
 
 class AddRatingView(object):
     def __call__(self, request, content_type_id, object_id, field_name, score):
@@ -15,7 +50,8 @@ class AddRatingView(object):
         try:
             instance = self.get_instance(content_type_id, object_id)
         except ObjectDoesNotExist:
-            raise Http404('Object does not exist')
+            message = _("Object does not exist")
+            raise Http404(message)
         
         context = self.get_context(request)
         context['instance'] = instance
@@ -30,7 +66,7 @@ class AddRatingView(object):
             'score': score,
         })
         
-        had_voted = bool(field.get_rating_for_user(request.user, request.META['REMOTE_ADDR'], request.COOKIES))
+        had_voted = field.get_rating_for_user(request.user, request.META['REMOTE_ADDR'], request.COOKIES)
         
         context['had_voted'] = had_voted
                     
@@ -46,7 +82,7 @@ class AddRatingView(object):
             return self.cannot_change_vote_response(request, context)
         except CannotDeleteVote:
             return self.cannot_delete_vote_response(request, context)
-        if had_voted:
+        if had_voted is not None:
             return self.rating_changed_response(request, context, adds)
         return self.rating_added_response(request, context, adds)
     
@@ -57,11 +93,13 @@ class AddRatingView(object):
         raise NotImplementedError
 
     def too_many_votes_from_ip_response(self, request, context):
-        response = HttpResponse('Too many votes from this IP address for this object.')
+        message = _("Too many votes from this IP address for this object.")
+        response = HttpResponse(message)
         return response
 
     def rating_changed_response(self, request, context, adds={}):
-        response = HttpResponse('Vote changed.')
+        message = _("Vote changed.")
+        response = HttpResponse(message)
         if 'cookie' in adds:
             cookie_name, cookie = adds['cookie_name'], adds['cookie']
             if 'deleted' in adds:
@@ -71,7 +109,8 @@ class AddRatingView(object):
         return response
     
     def rating_added_response(self, request, context, adds={}):
-        response = HttpResponse('Vote recorded.')
+        message = _("Vote recorded.")
+        response = HttpResponse(message)
         if 'cookie' in adds:
             cookie_name, cookie = adds['cookie_name'], adds['cookie']
             if 'deleted' in adds:
@@ -81,27 +120,32 @@ class AddRatingView(object):
         return response
 
     def authentication_required_response(self, request, context):
-        response = HttpResponse('You must be logged in to vote.')
+        message = _("You must be logged in to vote.")
+        response = HttpResponse(message)
         response.status_code = 403
         return response
     
     def cannot_change_vote_response(self, request, context):
-        response = HttpResponse('You have already voted.')
+        message = "You have already voted."
+        response = HttpResponse(message)
         response.status_code = 403
         return response
     
     def cannot_delete_vote_response(self, request, context):
-        response = HttpResponse('You can\'t delete this vote.')
+        message = _("You can't delete this vote.")
+        response = HttpResponse(message)
         response.status_code = 403
         return response
     
     def invalid_field_response(self, request, context):
-        response = HttpResponse('Invalid field name.')
+        message = _("Invalid field name.")
+        response = HttpResponse(message)
         response.status_code = 403
         return response
     
     def invalid_rating_response(self, request, context):
-        response = HttpResponse('Invalid rating value.')
+        message = _("Invalid rating value.")
+        response = HttpResponse(message)
         response.status_code = 403
         return response
         
@@ -118,7 +162,8 @@ class AddRatingFromModel(AddRatingView):
         try:
             content_type = ContentType.objects.get(model=model, app_label=app_label)
         except ContentType.DoesNotExist:
-            raise Http404('Invalid `model` or `app_label`.')
+            message = _("Invalid `model` or `app_label`.")
+            raise Http404(message)
         
         return super(AddRatingFromModel, self).__call__(request, content_type.id,
                                                         object_id, field_name, score)
