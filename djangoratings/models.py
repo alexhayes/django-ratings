@@ -7,6 +7,7 @@ import datetime
 
 from managers import VoteManager, SimilarUserManager
 
+
 class Vote(models.Model):
     content_type    = models.ForeignKey(ContentType, related_name="votes")
     object_id       = models.PositiveIntegerField()
@@ -44,6 +45,7 @@ class Vote(models.Model):
         return '.'.join(ip)
     partial_ip_address = property(partial_ip_address)
 
+
 class Score(models.Model):
     content_type    = models.ForeignKey(ContentType)
     object_id       = models.PositiveIntegerField()
@@ -59,6 +61,7 @@ class Score(models.Model):
     def __unicode__(self):
         return u"%s scored %s with %s votes" % (self.content_object, self.score, self.votes)
 
+
 class SimilarUser(models.Model):
     from_user       = models.ForeignKey(User, related_name="similar_users")
     to_user         = models.ForeignKey(User, related_name="similar_users_from")
@@ -73,6 +76,7 @@ class SimilarUser(models.Model):
 
     def __unicode__(self):
         print u"%s %s similar to %s" % (self.from_user, self.exclude and 'is not' or 'is', self.to_user)
+
 
 class IgnoredObject(models.Model):
     user            = models.ForeignKey(User)

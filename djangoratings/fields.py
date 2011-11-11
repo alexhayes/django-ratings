@@ -3,7 +3,6 @@ from django.utils.translation import ugettext_lazy as _
 from django.conf import settings
 
 import forms
-import itertools
 from datetime import datetime
 
 from models import Vote, Score
@@ -22,13 +21,16 @@ try:
 except ImportError:
     from md5 import new as md5
     
+
 def md5_hexdigest(value):
     return md5(value).hexdigest()
+
 
 class Rating(object):
     def __init__(self, score, votes):
         self.score = score
         self.votes = votes
+
 
 class RatingManager(object):
     def __init__(self, instance, field):
@@ -43,17 +45,13 @@ class RatingManager(object):
         """get_percent()
         
         Returns the weighted percentage of the score from min-max values"""
-        if not (self.votes and self.score):
-            return 0
-        return 100 * (self.get_rating() / (self.field.range_upper-self.field.range_lower+1))
+        return 100 * ((self.get_rating() - self.field.range_lower) / (self.field.range_upper - self.field.range_lower))
     
     def get_real_percent(self):
         """get_real_percent()
         
         Returns the unmodified percentage of the score based on a 0-point scale."""
-        if not (self.votes and self.score):
-            return 0
-        return 100 * (self.get_real_rating() / (self.field.range_upper-self.field.range_lower+1))
+        return 100 * ((self.get_real_rating() - self.field.range_lower) / (self.field.range_upper - self.field.range_lower))
     
     def get_ratings(self):
         """get_ratings()
@@ -65,7 +63,7 @@ class RatingManager(object):
         """get_rating()
         
         Returns the weighted average rating."""
-        if not (self.votes and self.score):
+        if not self.votes:
             return 0
         return float(self.score)/(self.votes+self.field.weight)
     
@@ -79,7 +77,7 @@ class RatingManager(object):
         """get_rating()
         
         Returns the unmodified average rating."""
-        if not (self.votes and self.score):
+        if not self.votes:
             return 0
         return float(self.score)/self.votes
     
@@ -114,7 +112,7 @@ class RatingManager(object):
         try:
             rating = Vote.objects.get(**kwargs)
             try:
-                return self.field.values[rating.score + self.field.range_lower]
+                return self.field.values[rating.score - self.field.range_lower]
             except IndexError:
                 pass
         except Vote.MultipleObjectsReturned:
@@ -212,6 +210,7 @@ class RatingManager(object):
         else:
             has_changed = True
             self.votes += 1
+
         if has_changed:
             if not delete:
                 self.score += rating.score
@@ -219,25 +218,20 @@ class RatingManager(object):
                 self.instance.save()
             #setattr(self.instance, self.field.name, Rating(score=self.score, votes=self.votes))
             
+            score, created = Score.objects.get_or_create(
+                content_type=self.get_content_type(),
+                object_id=self.instance.pk,
+                key=self.field.key,
             defaults = dict(
                 score   = self.score,
                 votes   = self.votes,
             )
-            
-            kwargs = dict(
-                content_type    = self.get_content_type(),
-                object_id       = self.instance.pk,
-                key             = self.field.key,
             )
-            
-            try:
-                score, created = Score.objects.get(**kwargs), False
-            except Score.DoesNotExist:
-                kwargs.update(defaults)
-                score, created = Score.objects.create(**kwargs), True
-            
             if not created:
-                score.__dict__.update(defaults)
+                if (score.score != self.score or
+                    score.votes != self.votes):
+                    score.score = self.score
+                    score.votes = self.votes
                 score.save()
         
         # return value
@@ -303,6 +297,7 @@ class RatingManager(object):
         if commit:
             self.instance.save()
 
+
 class RatingCreator(object):
     def __init__(self, field):
         self.field = field
@@ -321,6 +316,7 @@ class RatingCreator(object):
             setattr(instance, self.score_field_name, value.score)
         else:
             raise TypeError("%s value must be a Rating instance, not '%r'" % (self.field.name, value))
+
 
 class RatingField(IntegerField):
     """
@@ -412,6 +408,7 @@ class VotingField(RatingField):
         kwargs['values'] = ('down', 'clear', 'up')
         super(VotingField, self).__init__(*args, **kwargs)
 
+
 class AnonymousVotingField(VotingField):
     def __init__(self, *args, **kwargs):
         kwargs['allow_anonymous'] = True
@@ -427,6 +424,7 @@ class FavoriteField(RatingField):
         kwargs['values'] = ('clear', 'favorite')
         super(FavoriteField, self).__init__(*args, **kwargs)
 
+
 class AnonymousFavoriteField(FavoriteField):
     def __init__(self, *args, **kwargs):
         kwargs['allow_anonymous'] = True
@@ -441,6 +439,7 @@ class FlagField(RatingField):
         kwargs['titles'] = (_("Clear"), _("Flag"))
         kwargs['values'] = ('clear', 'flag')
         super(FlagField, self).__init__(*args, **kwargs)
+
 
 class AnonymousFlagField(FlagField):
     def __init__(self, *args, **kwargs):

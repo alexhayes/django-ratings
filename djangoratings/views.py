@@ -4,7 +4,6 @@ from django.utils.translation import ugettext_lazy as _
 from django.http import HttpResponse, Http404
 
 from exceptions import *
-from django.conf import settings
 from default_settings import RATINGS_VOTES_PER_IP
 
 def _rating_widget(instance, field, had_voted):
@@ -38,8 +37,14 @@ def _rating_widget(instance, field, had_voted):
         'had_voted' : had_voted,
         'score': field.score,
         'votes': field.votes,
+        'vote': int(round(field.score)),
         'ratings': ratings,
+        'percent': field.get_percent(),
+        'real_percent': field.get_real_percent(),
+        'positive': int((field.votes * field.get_real_percent() / 100) + 0.5),
+        'negative': int((field.votes - (field.votes * (field.get_real_percent() / 100))) + 0.5),
     }
+
 
 class AddRatingView(object):
     def __call__(self, request, content_type_id, object_id, field_name, score):
