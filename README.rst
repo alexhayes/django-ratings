@@ -4,6 +4,8 @@ django-ratings
 
 A generic ratings module. The field itself appends two additional fields on the model, for optimization reasons. It adds ``<field>_score``, and ``<field>_votes`` fields, which are both integer fields.
 
+This fork extends upon David Cramer's django-ratings in a way to make ratings generic to better support and adapt to different rating systems, such as votings, star ratings, like/dislike, flags and others.
+
 ============
 Installation
 ============
@@ -233,7 +235,11 @@ Uses ``widget_template`` passed to the field to render the rating field widget::
 
         {% rating_widget on instance.field %}
 
-The context is passed to the template and additionaly, the template receives:
+If you want to use a different ``widget_template``, pass the template name as::
+
+        {% rating_widget on instance.field using "template_name.html" %}
+
+The context is passed to the template and additionally, the template receives:
 
 * ``content_type`` - The content type of the instance object.
 * ``instance`` - The object instance.
@@ -242,8 +248,13 @@ The context is passed to the template and additionaly, the template receives:
 * ``object_id`` - The object instance ID.
 * ``field_name`` - The field name.
 * ``had_voted`` - If the user has voted previously, the voted score.
+* ``votes`` - Number of total votes.
 * ``score`` - The overall voting score for the object.
-* ``votes`` - Number of votes.
+* ``vote`` - The overall voting score for the object, as an integer.
+* ``percent`` - The overall voting score for the object, as a percentage.
+* ``real_percent`` - The overall voting score for the object, as a percentage (without taking into account the weights).
+* ``positive`` - Number of positive votes (when applicable).
+* ``negative`` - Number of negative votes (when applicable).
 * ``ratings`` - a list of ``checked``, ``value`` and ``title``. For example::
 
         [
