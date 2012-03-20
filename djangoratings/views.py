@@ -34,6 +34,7 @@ def _rating_widget(instance, field, had_voted):
         'app_label': content_type.app_label,
         'object_id': instance.id,
         'field_name': field.field.name,
+        'field' : field,
         'had_voted' : had_voted,
         'score': field.score,
         'votes': field.votes,
@@ -41,6 +42,10 @@ def _rating_widget(instance, field, had_voted):
         'ratings': ratings,
         'percent': field.get_percent(),
         'real_percent': field.get_real_percent(),
+        'real_rating': field.get_real_rating(),
+        'rating': field.get_rating(),
+        'whole_real_rating': round(field.get_real_rating(), 0),
+        'whole_rating': round(field.get_rating(), 0),
         'positive': int((field.votes * field.get_real_percent() / 100) + 0.5),
         'negative': int((field.votes - (field.votes * (field.get_real_percent() / 100))) + 0.5),
     }
